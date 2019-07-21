@@ -12,11 +12,7 @@ function get-CFDNSZoneStatistics
         $APIToken,
 
         [Parameter(mandatory = $true)]
-        [ValidateScript({
-                    $_.contains('@')
-                }
-        )]
-        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")]
         [string]
         $Email,
 
@@ -35,50 +31,38 @@ function get-CFDNSZoneStatistics
     $CloudFlareAPIURL = 'https://www.cloudflare.com/api_json.html'
 
     # Build up the request parameters
-    $APIParameters = @{'tkn' = $APIToken
-                       'email' = $Email
-                       'a' = 'stats'
-                       'z' = $Zone}
+    $APIParameters = @{
+        'tkn'   = $APIToken
+        'email' = $Email
+        'a'     = 'stats'
+        'z'     = $Zone
+    }
 
     $interval = 20
 
     switch ($Period)
     {
         'Past30Days' 
-        {
-            $interval = 20
-        }
+        {$interval = 20}
         'Past7Days'  
-        {
-            $interval = 30
-        }
+        {$interval = 30}
         'PastDay'    
-        {
-            $interval = 40
-        }
+        {$interval = 40}
         'Past24Hours' 
-        {
-            $interval = 100
-        }
+        {$interval = 100}
         'Past12Hours' 
-        {
-            $interval = 110
-        }
+        {$interval = 110}
         'Past6hours'  
-        {
-            $interval = 120
-        }
+        {$interval = 120}
     }
 
     $APIParameters.Add('interval', $interval)
 
-    $JSONResult = Invoke-RestMethod -Uri $CloudFlareAPIURL -Body $APIParameters -Method Post
+    $JSONResult = Invoke-RestMethod -Uri $CloudFlareAPIURL -Body $APIParameters -Method Get
     
     #if the cloud flare api has returned and is reporting an error, then throw an error up
     if ($JSONResult.result -eq 'error') 
-    {
-        throw $($JSONResult.msg)
-    }
+    {throw $($JSONResult.msg)}
     
     $JSONResult.response.result
 }

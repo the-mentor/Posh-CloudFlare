@@ -97,10 +97,7 @@ function Update-CFDNSRecord
         $APIToken,
 
         [Parameter(mandatory = $true)]
-        [ValidateScript({
-                    $_.contains('@')
-                }
-        )]
+        [ValidatePattern("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")]
         [ValidateNotNullOrEmpty()]
         [string]
         $Email,
@@ -135,10 +132,7 @@ function Update-CFDNSRecord
         $EnableCloudFlare,
 
         [Parameter(mandatory = $false)]
-        [ValidateScript({
-                    ($_ -eq 1) -or (($_ -ge 120) -and ($_ -le 86400))
-                }
-        )]
+        [ValidateScript({($_ -eq 1) -or (($_ -ge 120) -and ($_ -le 86400))})]
         [int]
         $TTL = 1,
         
@@ -178,29 +172,25 @@ function Update-CFDNSRecord
     $CloudFlareAPIURL = 'https://www.cloudflare.com/api_json.html'
 
     # Build up the request parameters, we need API Token, email, command, dnz zone, dns record type, dns record name and content, and finally the TTL.
-    $APIParameters = @{'tkn'   = $APIToken 
-                       'email' = $Email
-                       'a'     = 'rec_edit'
-                       'z'     = $Zone}
+    $APIParameters = @{
+        'tkn'   = $APIToken
+        'email' = $Email
+        'a'     = 'rec_edit'
+        'z'     = $Zone
+    }
 
     if ($ID -ne '') 
-    {
-        Write-Verbose 'update by ID'
-    }
+    {Write-Verbose -Message 'update by ID'}
     else
     {
-        Write-Verbose 'update by Name and Type'
+        Write-Verbose -Message 'update by Name and Type'
         if ($Name -eq '@')
-        {
-            $Name -eq $Zone
-        }
-        $Record = Get-CFDNSRecord -APIToken $APIToken -Email $Email -Zone $Zone | Where-Object { ($_.display_name -eq $name) -and ($_.type -eq $Type)}
+        {$Name -eq $Zone}
+        $Record = Get-CFDNSRecord -APIToken $APIToken -Email $Email -Zone $Zone | Where-Object -FilterScript { ($_.display_name -eq $Name) -and ($_.type -eq $Type)}
         if ($Record -eq $null)
-        {
-            throw "No record found"
-        }
+        {throw 'No record found'}
         $ID = $Record.rec_id
-        Write-verbose $ID
+        Write-Verbose -Message $ID
     }
 
 
@@ -241,13 +231,11 @@ function Update-CFDNSRecord
         $APIParameters.Add('service_mode', 0)
     }
         
-    $JSONResult = Invoke-RestMethod -Uri $CloudFlareAPIURL -Body $APIParameters -Method Post
+    $JSONResult = Invoke-RestMethod -Uri $CloudFlareAPIURL -Body $APIParameters -Method Get
     
     #if the cloud flare api has returned and is reporting an error, then throw an error up
     if ($JSONResult.result -eq 'error') 
-    {
-        throw $($JSONResult.msg)
-    }
+    {throw $($JSONResult.msg)}
 
     $JSONResult.response.rec.obj
 }
